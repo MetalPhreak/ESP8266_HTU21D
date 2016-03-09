@@ -5,6 +5,8 @@ Driver Library for the Measurement Specialties HTU21D temperature & humidity sen
 
 The HTU21D is an i2c device with a temperature sensing element (capable of 14bit resolution or 0.01 degC) and a relative humidity sensing element (capable of 12bit resolution or 0.04%RH). 
 
+Sensiron SHT21 appears to be code compatible, but is currently untested. 
+
 Usage
 ========
 In user_init call:
