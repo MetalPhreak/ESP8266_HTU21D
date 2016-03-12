@@ -31,8 +31,9 @@
 void HTU21D_writeUserReg(uint8 data);
 uint8 HTU21D_readUserReg();
 void HTU21D_softReset();
-float HTU21D_temperature(float *measurement); 
-float HTU21D_humidity(float *measurement);
+bool HTU21D_temperature(float *measurement); 
+bool HTU21D_humidity(float *measurement);
+bool HTU21D_CRC(uint8 msb, uint8 lsb, uint8 crc);
 
 #endif
 

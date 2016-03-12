@@ -65,18 +65,18 @@ void HTU21D_softReset(){
 	i2c_stop();
 }
 
-float HTU21D_temperature(float *measurement) {
+bool HTU21D_temperature(float *measurement) {
 	uint8 msb, lsb, crc = 0;
 	float val = 0;
 	i2c_start();
 	i2c_writeByte(0x80); //0x40 address << 1 + 0x00 Write
-	if(!i2c_check_ack()) { return 0; } 
+	if(!i2c_check_ack()) { *measurement = 0; return 0; } 
 	i2c_writeByte(TRIG_TEMP_RLS); //Write User Register Command
-	if(!i2c_check_ack()) { return 0; } 
+	if(!i2c_check_ack()) { *measurement = 0; return 0; } 
 	os_delay_us(50000); //wait 50mS
 	i2c_start();
 	i2c_writeByte(0x81); //0x40 address << 1 + 0x01 Read
-	if(!i2c_check_ack()) { return 0; } 
+	if(!i2c_check_ack()) { *measurement = 0; return 0; } 
 	msb = i2c_readByte();
 	i2c_send_ack(1);
 	lsb = i2c_readByte();
@@ -87,28 +87,32 @@ float HTU21D_temperature(float *measurement) {
 
 	//os_printf("MSB: %02x LSB: %02x CRC: %02x\n", msb, lsb, crc);
 
-	//TODO Check CRC Value and exit if transmission errors
+	if(HTU21D_CRC(msb, lsb, crc)) {
+		val = msb<<8 | lsb;
+  		val *= 175.72;
+  		val /= 65536;
+  		val -= 46.85;
+		*measurement = val;
+		return 1;
+	} else {
+		*measurement = 0;
+		return 0;
+	}
 
-	val = msb<<8 | lsb;
-  	val *= 175.72;
-  	val /= 65536;
-  	val -= 46.85;
-	*measurement = val;
-	return 1;
 }
 
-float HTU21D_humidity(float *measurement) {
+bool HTU21D_humidity(float *measurement) {
 	uint8 msb, lsb, crc = 0;
 	float val = 0;
 	i2c_start();
 	i2c_writeByte(0x80); //0x40 address << 1 + 0x00 Write
-	if(!i2c_check_ack()) { return 0; } 
+	if(!i2c_check_ack()) { *measurement = 0; return 0; } 
 	i2c_writeByte(TRIG_HUM_RLS); //Write User Register Command
-	if(!i2c_check_ack()) { return 0; } 
+	if(!i2c_check_ack()) { *measurement = 0; return 0; } 
 	os_delay_us(16000); //wait 16mS
 	i2c_start();
 	i2c_writeByte(0x81); //0x40 address << 1 + 0x01 Read
-	if(!i2c_check_ack()) { return 0; } 
+	if(!i2c_check_ack()) { *measurement = 0; return 0; } 
 	msb = i2c_readByte();
 	i2c_send_ack(1);
 	lsb = i2c_readByte();
@@ -119,14 +123,37 @@ float HTU21D_humidity(float *measurement) {
 
 	//os_printf("MSB: %02x LSB: %02x CRC: %02x\n", msb, lsb, crc);
 
-	//TODO Check CRC Value and exit if transmission errors
+	if(HTU21D_CRC(msb, lsb, crc)) {
+		val = msb<<8 | lsb;
+ 		val *= 125;
+		val /= 65536;
+		val -= 6;
+		*measurement = val;
+		return 1;
+	} else {
+		*measurement = 0;
+		return 0;
+	}
+}
 
-	val = msb<<8 | lsb;
- 	val *= 125;
-	val /= 65536;
-	val -= 6;
-	*measurement = val;
-	return 1;
+bool HTU21D_CRC(uint8 msb, uint8 lsb, uint8 crc) {
+	uint32 value = msb<<16 | lsb <<8 | crc;
+	//polynomial = x^8 + x^5 + x^4 + 1 = 0b000000000000000100110001 = 0x000131
+	//operating on 3 byte value of MSB|LSB|CRC
+	//0x000131<<27 = 0b100110001000000000000000 = 0x988000 shifted left to align on 3byte boundary
+	uint32 divisor = 0x988000;
+
+	uint8 i;
+	for(i=0; i < 16; i++){
+		if(value & 1<<(23-i)){
+			value ^= divisor;
+		}
+		divisor >>= 1;
+	}
+	if(value) return 0; //remainder of value should be 0 otherwise CRC check failed.
+
+	return 1; //CRC check OK
+
 }
 
 
