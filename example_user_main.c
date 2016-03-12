@@ -44,14 +44,20 @@ static void ICACHE_FLASH_ATTR ActionTask(os_event_t *events){
 }
 
 static void ICACHE_FLASH_ATTR IdleTask(os_event_t *events){
-	float temperature;
+    float temperature;
     float humidity;
     char tstring[16];
     char hstring[16];
-    HTU21D_temperature(&temperature); //read temperature value into float var
-    ftos(temperature, tstring); //convert float var into string and store for later use
-    HTU21D_humidity(&humidity); //read humidity value into float var
-    ftos(humidity, hstring); //convert float var into string and store for later use
+    if(HTU21D_temperature(&temperature)) { //read temperature value into float var
+        ftos(temperature, tstring); //convert float var into string and store for later use
+    } else {
+        os_sprintf(tstring, "Error!");
+    }
+    if(HTU21D_humidity(&humidity)) { //read humidity value into float var
+        ftos(humidity, hstring); //convert float var into string and store for later use
+    } else {
+        os_sprintf(hstring, "Error!");
+    }
     os_printf("Temp: %s Humidity: %s\n", tstring, hstring); //print values to serial terminal
 	system_os_post(IdleTaskPrio, 0, 0); //add IdleTask back into queue
 }
